@@ -1,201 +1,161 @@
-'use strict'; //
+"use strict";
 
-// Variables pour stocker les données et le jeton d'authentification
-let works = [];
-let deleteBtn = [];
-let token;
+// ********** CONSTANTS ********** //
+
 const URL = 'http://localhost:5678/api/';
 
-// Fonction pour récupérer et afficher les travaux
-const getWorks = async () => {
-  const worksdoc = document.getElementById('mywork');
+const worksElt      = document.getElementById('work');
+const categoriesElt = document.getElementById('categories');
 
+// ********** VARIABLES ********** //
+
+let works = [];
+let categories = [];
+
+let token = '';
+let file;
+
+// ********** FUNCTIONS ********** //
+
+// DATA
+
+const getData = async (type) => {
   try {
-    const response = await fetch(URL + 'works');
+    const response = await fetch(URL + type);
     const data = await response.json();
-    works = data; // Stockage des travaux dans le tableau
+    console.log(data);
 
-    works.forEach((work) => {
-      const figure = document.createElement('figure');
-      figure.innerHTML = '';
-      figure.innerHTML = `
-        <img src="${work.imageUrl}" alt="${work.title}">
-        <figcaption>${work.title}</figcaption>
-      `;
-      worksdoc.appendChild(figure);
-    });
-    document.getElementById('all-work').classList.add('btn-all');
+    return data;
+
   } catch (error) {
-    console.log('Erreur lors de la récupération des travaux:', error);
+    console.log(error);
   }
-};
+}
 
-// Fonction pour récupérer et afficher les catégories
+const displayWorks = async () => {
+  works = await getData('works');
 
-const filterWorks = (categoryId, button) => {
-  console.log(categoryId);
-  const worksdoc = document.getElementById('mywork');
-  worksdoc.innerHTML = ''; // Réinitialiser le conteneur avant d'ajouter les nouveaux éléments
-
-  // Filtrer les travaux en fonction de l'ID de catégorie
-  const filteredWorks = works.filter((work) => work.categoryId === categoryId);
-
-  // Ajouter les éléments filtrés au DOM
-  filteredWorks.forEach((work) => {
+  for (const work of works) {
     const figure = document.createElement('figure');
+
     figure.innerHTML = `
       <img src="${work.imageUrl}" alt="${work.title}">
       <figcaption>${work.title}</figcaption>
     `;
-    worksdoc.appendChild(figure);
-  });
 
-  // Mettre à jour l'état du bouton actif
-  document.querySelectorAll('.category__btn').forEach((btn) => {
-    btn.classList.remove('active');
-  });
-  button.classList.add('active');
-  document.getElementById('all-work').classList.remove('btn-all');
-};
-
-document.getElementById('all-work').addEventListener('click', () => {
-  const worksdoc = document.getElementById('mywork');
-  worksdoc.innerHTML = '';
-  works.forEach((work) => {
-    const figure = document.createElement('figure');
-    figure.innerHTML = `
-      <img src="${work.imageUrl}" alt="${work.title}">
-      <figcaption>${work.title}</figcaption>
-    `;
-    worksdoc.appendChild(figure);
-  });
-
-  document.getElementById('all-work').classList.add('btn-all');
-  document.querySelectorAll('.category__btn').forEach((btn) => {
-    btn.classList.remove('active');
-  });
-});
-
-const getCategories = async () => {
-  const categoriesDoc = document.getElementById('categories');
-
-  try {
-    const response = await fetch(URL + 'categories');
-    const categories = await response.json();
-
-    categories.forEach((category) => {
-      const categoryElement = document.createElement('button');
-      categoryElement.setAttribute('data-category', category.id);
-      categoryElement.className = 'category__btn';
-      categoryElement.addEventListener('click', () =>
-        filterWorks(category.id, categoryElement)
-      );
-
-      categoryElement.textContent = category.name;
-      categoriesDoc.appendChild(categoryElement);
-    });
-  } catch (error) {
-    console.log('Erreur lors de la récupération des catégories:', error);
+    worksElt.appendChild(figure);
   }
-};
+}
 
-// Fonction pour initialiser l'application et vérifier la connexion
-document.addEventListener('DOMContentLoaded', function () {
-  console.log('Application en cours de chargement...');
-  token = localStorage.getItem('token');
-  if (token) {
-    document.getElementById('login-url').style.display = 'none';
-    document.getElementById('logout').style.display = 'block';
-  } else {
-    document.getElementById('logout').style.display = 'none';
+const displayCategories = async () => {
+  categories = await getData('categories');
+
+  for (const category of categories) {
+    const categoryElt = document.createElement('button');
+
+    categoryElt.setAttribute('data-category', category.id);
+    categoryElt.className = 'category__btn';
+    categoryElt.addEventListener('click', () =>
+      filterWorks(category.id, categoryElt)
+    );
+
+    categoryElt.textContent = category.name;
+    categoriesElt.appendChild(categoryElt);
   }
+}
 
-  // Charger les travaux et les catégories
-  getWorks();
-  getCategories();
-});
+// FIRST MODAL      
 
-// Gestion de la déconnexion
-document.getElementById('logout').addEventListener('click', function () {
-  localStorage.removeItem('token');
-  document.getElementById('login-url').style.display = 'block';
-  document.getElementById('logout').style.display = 'none';
-});
+const openModal = () => {
+  let deleteBtn = [];
 
-// Gestion de l'ouverture et de la fermeture des modales
-document.getElementById('close-modal').addEventListener('click', function () {
-  document.getElementById('modal').style.display = 'none';
-  document.getElementById('modal').style.opacity = 0;
-});
-
-document.getElementById('open-modal').addEventListener('click', function () {
   document.getElementById('modal').style.display = 'block';
   document.getElementById('modal').style.opacity = 1;
 
-  // Afficher les images dans la modale
-  const modalImages = document.getElementById('modal-images');
-  modalImages.innerHTML = ''; // Vider le contenu précédent
+  const modalImages = document.getElementById('modal-images')
+
   works.forEach((work) => {
     const li = document.createElement('li');
     li.innerHTML = `
-      <img src="${work.imageUrl}" alt="${work.title}">
-      <span class="delete"><i class="fa-solid fa-trash-can"></i></span>
-    `;
+            <img src="${work.imageUrl}" alt="${work.title}">
+            <span class="delete"><i class="fa-solid fa-trash-can"></i></span>
+        `;
     modalImages.appendChild(li);
   });
-
-  // Gestion des boutons de suppression dans la modale
   const deleteWorks = document.getElementsByClassName('delete');
-  deleteBtn = [...deleteWorks];
+  console.log(deleteWorks);
+  deleteBtn = [...deleteWorks]
 
-  deleteBtn.forEach((btn, index) => {
-    btn.addEventListener('click', async function () {
+  for (let i = 0; i < deleteBtn.length; i++) {
+    deleteBtn[i].addEventListener('click', async function () {
       if (confirm('Voulez-vous supprimer cette image ?')) {
+
         try {
-          const response = await fetch(URL + `works/${works[index].id}`, {
+          const response = await fetch(`http://localhost:5678/api/works/${works[i].id}`, {
             method: 'DELETE',
             headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-          if (response.ok) {
-            alert('Image supprimée avec succès');
-            window.location.reload(); // Recharger la page pour mettre à jour la liste des travaux
-          } else {
-            console.error('Erreur lors de la suppression:', response.status);
-          }
+              'Authorization': `Bearer ${token}`
+            }
+          })
         } catch (error) {
-          console.error('Erreur lors de la tentative de suppression:', error);
+
         }
       }
-    });
-  });
-});
+    })
+  }
+}
 
-/********************** MODAL 2 ************************ Pour implémenter les fonctionnalités des boutons de retour et de fermeture dans la modal,*/
-const openSecondModal = () => {
-  document.getElementById('overflow-modal').style.display = 'block';
-  document.getElementById('overflow-modal').style.opacity = 1;
+const closeModal = () => {
   document.getElementById('modal').style.display = 'none';
   document.getElementById('modal').style.opacity = 0;
+}
+
+const returnToModal = () => {
+  document.getElementById("overflow-modal").style.display = "none";
+  document.getElementById("overflow-modal").style.opacity = 0;
+  document.getElementById("modal").style.display = "block";
+  document.getElementById("modal").style.opacity = 1;
+}
+
+document
+  .getElementById('return-second-modal')
+  .addEventListener('click', returnToModal);
+
+// SECOND MODAL
+
+const openSecondModal = () => {
+  document.getElementById("overflow-modal").style.display = "block";
+  document.getElementById("overflow-modal").style.opacity = 1;
+  document.getElementById("modal").style.display = "none";
+  document.getElementById("modal").style.opacity = 0;
+
+
+const categoriesElement = document.getElementById('category');
+
+  categoriesElement.innerHTML = '';
+
+  for (const category of categories) {
+    const option = document.createElement('option');
+    option.textContent = category.name;
+    option.setAttribute('value', category.id);
+
+    categoriesElement.appendChild(option);
+  }
 };
+
+
+
+document.getElementById('add-photo').addEventListener('click', openSecondModal);
 
 const closeSecondModal = () => {
-  document.getElementById('overflow-modal').style.display = 'none';
-  document.getElementById('overflow-modal').style.opacity = 0;
-};
+  document.getElementById("overflow-modal").style.display = "none";
+  document.getElementById("overflow-modal").style.opacity = 0;
+}
 
-const retunrtoModal = () => {
-  document.getElementById('overflow-modal').style.display = 'none';
-  document.getElementById('overflow-modal').style.opacity = 0;
-  document.getElementById('modal').style.display = 'block';
-  document.getElementById('modal').style.opacity = 1;
-};
+document
+  .getElementById('second-close-modal')
+  .addEventListener('click', closeSecondModal);
 
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('imageContainer').style.display = 'none';
-});
-let file;
 const selectImage = () => {
   const fileInput = document.getElementById('fileInput');
 
@@ -221,14 +181,56 @@ const selectImage = () => {
   fileInput.click();
 };
 
+
+// FOUNCTION CHANGE BUTTON COLOR
+document.addEventListener('DOMContentLoaded', function () {
+  const titleInput = document.getElementById('title');
+  const fileInput = document.getElementById('fileInput');
+  const categorySelect = document.getElementById('category');
+  const submitButton = document.getElementById('create-works');
+
+  function checkInputs() {
+    const titleValue = titleInput.value.trim();
+    const categoryValue = categorySelect.value.trim();
+    const fileValue = fileInput.files.length > 0;
+
+    if (titleValue !== '' && categoryValue !== '' && fileValue) {
+      submitButton.disabled = false;
+      submitButton.classList.remove('unenabled-button');
+      submitButton.classList.add('enabled-button');
+    } else {
+      submitButton.disabled = true;
+      submitButton.classList.add('unenabled-button');
+      submitButton.classList.remove('enabled-button');
+    }
+  }
+
+  titleInput.addEventListener('input', checkInputs);
+  categorySelect.addEventListener('change', checkInputs);
+  fileInput.addEventListener('change', checkInputs);
+});
+
 document
-  .getElementById('create-works-form')
-  .addEventListener('submit', async (event) => {
-    event.preventDefault();
+  .getElementById('add-photo-modal')
+  .addEventListener('click', selectImage);
 
-    const title = document.getElementById('title').value;
-    const category = document.getElementById('category').value;
 
+
+const submitWork = async (event) => {
+  event.preventDefault();
+
+  const title = document.getElementById('title').value;
+  const category = document.getElementById('category').value;
+
+  if (!file || !title || !category) {
+    const error = document.getElementById('error_submit');
+    const span = document.createElement('span');
+    span.textContent = 'Verifier que tous les champs sont correct';
+    span.style.color = 'red';
+    span.style;
+    error.appendChild(span);
+    return;
+  } else {
     const url = URL + 'works';
     const formData = new FormData();
     formData.append('title', title);
@@ -236,7 +238,7 @@ document
     formData.append('image', file);
 
     try {
-      await fetch(url, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -244,10 +246,129 @@ document
         body: formData,
       });
 
+      console.log(response);
+      //  const data = await response.json();
+
       if (!response.ok) {
         console.log(response);
       }
     } catch (error) {
       console.error('Failed to create work:', error);
     }
+  }
+};
+
+// RUN
+
+/**
+ * Déconnecte l'utilisateur en supprimant le jeton du stockage local et en mettant à jour l'affichage des boutons de connexion et de déconnexion.
+ */
+const logout = () => {
+  localStorage.removeItem('token');
+  document.getElementById('login-url').style.display = 'block';
+  document.getElementById('logout').style.display = 'none';
+}
+
+document.getElementById('logout').addEventListener('click', logout);
+document.getElementById('close-modal').addEventListener('click', closeModal);
+document.getElementById('open-modal').addEventListener('click', openModal);
+
+// ********** MAIN ********** //
+
+document.addEventListener('DOMContentLoaded', function () {
+  token = localStorage.getItem('token');
+
+  if (token) {
+    document.getElementById('login-url').style.display = 'none';
+    document.getElementById('logout').style.display = 'block';
+    document.getElementById('categories').style.display = 'none';
+  } else {
+    document.getElementById('open-modal').style.display = 'none'
+    document.getElementById('modifier').style.display = 'none';
+
+  }
+
+  displayWorks();
+  displayCategories();
+
+  document.getElementById('imageContainer').style.display = 'none';
+});
+
+document
+  .getElementById('create-works-form')
+  .addEventListener('submit', async (event) => {
+    submitWork(event);
   });
+
+
+  // FILTER
+const filterWorks = (categoryId, button) => {
+  const worksdoc = document.getElementById('work');
+  worksdoc.innerHTML = '';
+
+  // Filtrer les travaux en fonction de l'ID de catégorie
+  const filteredWorks = works.filter((work) => work.categoryId === categoryId);
+  console.log(filteredWorks);
+  // Ajouter les éléments filtrés au DOM
+  filteredWorks.forEach((work) => {
+    const figure = document.createElement('figure');
+    figure.innerHTML = `
+        <img src="${work.imageUrl}" alt="${work.title}">
+        <figcaption>${work.title}</figcaption>
+      `;
+    worksdoc.appendChild(figure);
+  });
+
+  document.querySelectorAll('.category__btn').forEach((btn) => {
+    btn.classList.remove('active');
+  });
+  button.classList.add('active');
+  document.getElementById('all-work').classList.remove('btn-all');
+};
+
+document.getElementById('all-work').addEventListener('click', () => {
+  const worksdoc = document.getElementById('work');
+  worksdoc.innerHTML = '';
+  works.forEach((work) => {
+    const figure = document.createElement('figure');
+    figure.innerHTML = `
+        <img src="${work.imageUrl}" alt="${work.title}">
+        <figcaption>${work.title}</figcaption>
+      `;
+    worksdoc.appendChild(figure);
+  });
+
+  document.getElementById('all-work').classList.add('btn-all');
+  document.querySelectorAll('.category__btn').forEach((btn) => {
+    btn.classList.remove('active');
+  });
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
